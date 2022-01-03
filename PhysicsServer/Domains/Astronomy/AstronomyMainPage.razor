@@ -1,0 +1,37 @@
+﻿@page "/astronomy"
+
+<h3>Astronomy</h3>
+@foreach(var link in links)
+{
+    <div class="card" >
+        <div class="card-body">
+            <div class="card-title">
+                <h5>@link.Name</h5>
+            </div>
+            <div class="card-text">
+                <p>@link.Description</p>
+            </div>
+            <a class="card-link stretched-link" href="@link.HRef">
+                Go
+            </a>
+        </div>
+    </div>
+}
+
+
+@code {
+    private record Link(string Name, string HRef, string Description);
+    private IEnumerable<Link> links = new List<Link>
+    {
+        new(
+            Name: "Labs",
+            HRef: "/astronomy/labs",
+            Description: "A collection of astronomy labs."
+        ),
+        new(
+            Name: "Visible Objects",
+            HRef: "/astronomy/star-watcher",
+            Description: "Find visible objects in the sky based on location, time, and other adjustable parameters."
+        )
+    };
+}

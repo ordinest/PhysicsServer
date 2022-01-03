@@ -1,0 +1,222 @@
+﻿@page "/astronomy/star-watcher"
+@using Darnton.Blazor.DeviceInterop.Geolocation
+@using Asterism
+@inject IAstroObjectService AstroObjectService
+@inject IJSRuntime JSRuntime
+
+
+<h3>Astronomy / Visible Objects</h3>
+<p class="text">
+    Find objects to observe in your night sky.
+</p>
+<div class="row">
+    <div class="col-lg-4 card viewing-options-form">
+        <div class="card-body">
+            <EditForm EditContext="@_editContext" OnValidSubmit="@HandleValidSubmit"
+                      OnInvalidSubmit="@HandleInvalidSubmit">
+                <div class="card-title">
+                    <h4>Viewing Options</h4>
+                </div>
+                <div class="card-text">
+                    <div class="row mb-3">
+                        <div class="col">
+                            <label for="startTime">Start Time</label>
+                            <input type="datetime-local" class="form-control" id="startTime"
+                                   @bind-value="@_observingOptions.StartTime" />
+                        </div>
+                        <div class="col">
+                            <label for="endTime">End Time</label>
+                            <input type="datetime-local" class="form-control" id="endTime"
+                                   @bind-value="@_observingOptions.EndTime" />
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-lg-4">
+                            <div class="form-group">
+                                <label for="latitude">Latitude</label>
+                                <input type="number" step="any" class="form-control" id="latitude"
+                                       placeholder="Enter latitude"
+                                       @bind-value="@_observingOptions.Latitude" />
+                            </div>
+                        </div>
+                        <div class="col-lg-4">
+                            <div class="form-group">
+                                <label for="longitude">Longitude</label>
+                                <input type="number" step="any" class="form-control" id="longitude"
+                                       placeholder="Enter longitude"
+                                       @bind-value="@_observingOptions.Longitude" />
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col">
+                            <label for="azimuth">Azimuth Range</label>
+                            <div class="row" id="azimuth">
+                                <div class="col-lg-6">
+                                    <input type="number" step="any" class="form-control"
+                                           placeholder="Enter minimum azimuth"
+                                           aria-describedby="min-azimuth-help"
+                                           @bind-value="@_observingOptions.MinAzimuth" />
+                                    <small class="form-text text-muted" id="min-azimuth-help">
+                                        Min azimuth
+                                    </small>
+                                </div>
+                                <div class="col-lg-6">
+                                    <input type="number" step="any" class="form-control"
+                                           placeholder="Enter maximum azimuth"
+                                           aria-describedby="max-azimuth-help"
+                                           @bind-value="@_observingOptions.MaxAzimuth" />
+                                    <small class="form-text text-muted" id="max-azimuth-help">
+                                        Max azimuth
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col">
+                            <label for="altitude">Altitude Range</label>
+                            <div class="row" id="altitude">
+                                <div class="col-lg-6">
+                                    <input type="number" step="any" class="form-control"
+                                           placeholder="Enter minimum altitde"
+                                           aria-describedby="min-altitde-help"
+                                           @bind-value="@_observingOptions.MinAltitude" />
+                                    <small class="form-text text-muted" id="min-altitude-help">
+                                        Min altitude
+                                    </small>
+                                </div>
+                                <div class="col-lg-6">
+                                    <input type="number" step="any" class="form-control"
+                                           placeholder="Enter maximum altitude"
+                                           aria-describedby="max-altitude-help"
+                                           @bind-value="@_observingOptions.MaxAltitude" />
+                                    <small class="form-text text-muted" id="max-altitude-help">
+                                        Max altitude
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <input type="submit" value="Find" class="btn btn-sm btn-primary" />
+            </EditForm>
+        </div>
+    </div>
+    <div class="col-lg-8">
+        @if (_filteredObjects.Count() > 0)
+        {
+            @foreach (var obj in _filteredObjects)
+            {
+                <p>
+                    @($"M{obj.Classification?.CatalogueId[AstroObject.Catalogue.Messier]}")
+                </p>
+            }
+        }
+    </div>
+    <div>
+        Finding objects: @_findingObjects
+    </div>
+</div>
+
+
+@code {
+    private class ObservingOptions
+    {
+        public DateTime StartTime { get; set; }
+        public DateTime EndTime { get; set; }
+        public double Latitude { get; set; }
+        public double Longitude { get; set; }
+        public int TimeZone { get; set; }
+        public double MinAzimuth { get; set; }
+        public double MaxAzimuth { get; set; }
+        public double MinAltitude { get; set; }
+        public double MaxAltitude { get; set; }
+    }
+
+    private EditContext? _editContext;
+    private ObservingOptions _observingOptions = new ObservingOptions();
+    private bool _findingObjects = false;
+    private IEnumerable<AstroObject> _filteredObjects = Enumerable.Empty<AstroObject>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        _filteredObjects = Enumerable.Empty<AstroObject>();
+        DateTime now = DateTime.Now;
+        // Firefox does not support seconds, so round to previous minute
+        _observingOptions = new ObservingOptions
+            {
+                StartTime = now.AddSeconds(-now.Second),
+                EndTime = now.AddSeconds(-now.Second).AddHours(1),
+                TimeZone = -5,
+                MinAzimuth = 0d,
+                MaxAzimuth = 180d,
+                MinAltitude = 0d,
+                MaxAltitude = 180d
+            };
+        _editContext = new EditContext(_observingOptions);
+        _filteredObjects = await GetAllObjects();
+        StateHasChanged();
+    }
+
+    private async Task GetCurrentPosition()
+    {
+        // BUSTED - need to figure out jsinterop to get this to work
+        //  - See https://developer.mozilla.org/en-US/docs/Web/API/Geolocation_API
+        /*
+            <div class="col-lg-4 d-flex">
+                <div class="btn btn-secondary mt-auto"
+                        @onclick="@GetCurrentPosition">
+                    Use my location
+                </div>
+            </div>
+         */
+        var res = await JSRuntime.InvokeAsync<(double latitude, double longitude)>("geolocation.getLocation");
+        StateHasChanged();
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        _findingObjects = true;
+        _filteredObjects = await GetVisibleObjects();
+        _findingObjects = false;
+    }
+
+    private void HandleInvalidSubmit()
+    {
+
+    }
+
+    private async Task<IEnumerable<AstroObject>> GetVisibleObjects()
+    {
+        // Convert horizontal coordinates to equitorial coordinates
+        var minCoords = new HorizontalCoords(
+            Azimuth: _observingOptions.MinAzimuth,
+            Altitude: _observingOptions.MinAltitude
+        ).ToEquitorialCoords(
+            dateTime: _observingOptions.StartTime,
+            geographicCoords: new GeographicCoords(
+                Latitude: _observingOptions.Latitude,
+                Longitude: _observingOptions.Longitude
+            ),
+            timeZone: _observingOptions.TimeZone
+        );
+        var maxCoords = new HorizontalCoords(
+            Azimuth: _observingOptions.MaxAzimuth,
+            Altitude: _observingOptions.MaxAltitude
+        ).ToEquitorialCoords(
+            dateTime: _observingOptions.EndTime,
+            geographicCoords: new GeographicCoords(
+                Latitude: _observingOptions.Latitude,
+                Longitude: _observingOptions.Longitude
+            ),
+            timeZone: _observingOptions.TimeZone
+        );
+
+        // Call api service
+        return await AstroObjectService.GetObjectsInRegion(minCoords, maxCoords);        
+    }
+
+    private async Task<IEnumerable<AstroObject>> GetAllObjects()
+    {
+        return await AstroObjectService.GetAll();
+    }
+}
