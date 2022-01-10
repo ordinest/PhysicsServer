@@ -42,7 +42,7 @@ namespace PhysicsServer.Domains.Astronomy
                    WriteIndented = true,
                    PropertyNameCaseInsensitive = true,
                });
-            var res = await _httpClient.PostAsync("getinregion", new StringContent(
+            var res = await _httpClient.PostAsync("InRegion", new StringContent(
                 json, Encoding.UTF8, "application/json"));
             res.EnsureSuccessStatusCode();
 

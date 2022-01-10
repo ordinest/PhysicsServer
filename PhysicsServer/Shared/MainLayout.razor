@@ -2,14 +2,15 @@
 
 <PageTitle>PhysicsServer</PageTitle>
 
-<div class="page">
-    <div class="sidebar">
-        <NavMenu />
-    </div>
-
-    <main>
-        <article class="content px-4">
+<Layout Sider="true">
+    <LayoutSider>
+        <LayoutSiderContent>
+            <NavMenu />
+        </LayoutSiderContent>
+    </LayoutSider>
+    <Layout>
+        <LayoutContent Padding="Padding.Is4.OnX.Is4.OnY">
             @Body
-        </article>
-    </main>
-</div>
+        </LayoutContent>
+    </Layout>
+</Layout>

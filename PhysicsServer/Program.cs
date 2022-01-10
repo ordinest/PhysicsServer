@@ -1,8 +1,10 @@
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
 using PhysicsServer.Data;
-using Darnton.Blazor.DeviceInterop.Geolocation;
 using PhysicsServer.Domains.Astronomy;
+using Blazorise.Bootstrap;
+using Blazorise;
+using Blazorise.Icons.FontAwesome;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -20,10 +22,21 @@ builder.Services.AddHttpClient<IAstroObjectService, AstroObjectService>(client =
     client.BaseAddress = new Uri(apiSettings.BaseAddress);
 });
 
-// Register geolocation service
-builder.Services.AddScoped<IGeolocationService, GeolocationService>();
+
+// Register Blazosire service
+builder.Services
+    .AddBlazorise(options =>
+    {
+        options.ChangeTextOnKeyPress = true;
+    })
+    .AddBootstrapProviders()
+    .AddFontAwesomeIcons();
+    
 
 var app = builder.Build();
+app.Logger.LogInformation($"\n\n\n" +
+    $"API Address: {apiSettings.BaseAddress}" +
+    $"\n\n\n");
 
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())

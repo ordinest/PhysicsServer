@@ -1,5 +1,4 @@
 ﻿@page "/astronomy/star-watcher"
-@using Darnton.Blazor.DeviceInterop.Geolocation
 @using Asterism
 @inject IAstroObjectService AstroObjectService
 @inject IJSRuntime JSRuntime
@@ -9,45 +8,50 @@
 <p class="text">
     Find objects to observe in your night sky.
 </p>
-<div class="row">
-    <div class="col-lg-4 card viewing-options-form">
-        <div class="card-body">
-            <EditForm EditContext="@_editContext" OnValidSubmit="@HandleValidSubmit"
-                      OnInvalidSubmit="@HandleInvalidSubmit">
-                <div class="card-title">
-                    <h4>Viewing Options</h4>
-                </div>
-                <div class="card-text">
-                    <div class="row mb-3">
-                        <div class="col">
+<Row>
+    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is4.OnWidescreen">
+        <Card>
+            <CardHeader>Viewing Options</CardHeader>
+            <CardBody>
+                <CardText>
+                    <Divider DividerType="DividerType.TextContent" Text="Time" />
+                    <Row Gutter="(0, 32)">
+                        <Column>
                             <label for="startTime">Start Time</label>
-                            <input type="datetime-local" class="form-control" id="startTime"
-                                   @bind-value="@_observingOptions.StartTime" />
-                        </div>
-                        <div class="col">
+                            <DateEdit TValue="DateTime" InputMode="DateInputMode.DateTime"
+                                      @bind-Date="@_observingOptions.StartTime" />
+                        </Column>
+                        <Column>
                             <label for="endTime">End Time</label>
-                            <input type="datetime-local" class="form-control" id="endTime"
-                                   @bind-value="@_observingOptions.EndTime" />
-                        </div>
-                    </div>
-                    <div class="row mb-3">
-                        <div class="col-lg-4">
-                            <div class="form-group">
-                                <label for="latitude">Latitude</label>
-                                <input type="number" step="any" class="form-control" id="latitude"
-                                       placeholder="Enter latitude"
-                                       @bind-value="@_observingOptions.Latitude" />
-                            </div>
-                        </div>
-                        <div class="col-lg-4">
-                            <div class="form-group">
-                                <label for="longitude">Longitude</label>
-                                <input type="number" step="any" class="form-control" id="longitude"
-                                       placeholder="Enter longitude"
-                                       @bind-value="@_observingOptions.Longitude" />
-                            </div>
-                        </div>
-                    </div>
+                            <DateEdit TValue="DateTime" InputMode="DateInputMode.DateTime"
+                                      @bind-Date="@_observingOptions.EndTime" />
+                        </Column>
+                    </Row>
+                    <Divider DividerType="DividerType.TextContent" Text="Location" />
+                    <Row Gutter="(0, 32)">
+                        <Column>
+                            <label for="latitude">Latitude</label>
+                            <input type="number" step="any" class="form-control" id="latitude"
+                                   placeholder="Enter latitude"
+                                   @bind-value="@_observingOptions.Latitude" />
+                        </Column>
+                        <Column>
+                            <label for="longitude">Longitude</label>
+                            <input type="number" step="any" class="form-control" id="longitude"
+                                   placeholder="Enter longitude"
+                                   @bind-value="@_observingOptions.Longitude" />
+                        </Column>
+                    </Row>
+                    <Divider DividerType="DividerType.TextContent" Text="Viewing Range" />
+                    <Row Gutter="(0, 16)">
+                        <Column>
+                            <label for="min-altitude">Minimum Altitude</label>
+                            <input type="number" step="any" class="form-control" id="min-altitude"
+                                   @bind-value="@_observingOptions.MinAltitude" />
+                            <Small TextColor="TextColor.Muted">Use to omit objects too near to the horizon.</Small>
+                        </Column>
+                    </Row>
+                    <!--
                     <div class="row mb-3">
                         <div class="col">
                             <label for="azimuth">Azimuth Range</label>
@@ -96,26 +100,73 @@
                             </div>
                         </div>
                     </div>
-                </div>
-                <input type="submit" value="Find" class="btn btn-sm btn-primary" />
-            </EditForm>
-        </div>
-    </div>
-    <div class="col-lg-8">
-        @if (_filteredObjects.Count() > 0)
+                    -->
+                </CardText>
+                <Button Color="Color.Primary" Loading="@_findingObjects"
+                        Clicked="@HandleValidSubmit">
+                    <LoadingTemplate>
+                        Finding...
+                    </LoadingTemplate>
+                    <ChildContent>
+                        Find
+                    </ChildContent>
+                </Button>
+            </CardBody>
+        </Card>
+    </Column>
+    <Column>
+        @foreach (var obj in _filteredObjectReps)
         {
-            @foreach (var obj in _filteredObjects)
-            {
-                <p>
-                    @($"M{obj.Classification?.CatalogueId[AstroObject.Catalogue.Messier]}")
-                </p>
-            }
+            <!-- Display
+                o ?Name
+                o Classifications
+                o RA/Dec
+                o Alt/Az
+                o Cardinal direction
+            -->
+            <Card>
+                <CardBody>
+                    <Div>
+                        <Text TextWeight="TextWeight.Bold">
+                            @(string.IsNullOrWhiteSpace(obj.Name)
+                        ? ""
+                        : obj.Name + " - "
+                        )
+                        </Text>
+                        <Text>
+                            @string.Join(
+                        " | ",
+                        @obj.Classification.CatalogueId.Keys.Select(
+                        catalogue => $"{catalogue} {obj.Classification.CatalogueId[catalogue]}")
+                        )
+                        </Text>
+                    </Div>
+                    <Divider />
+                    <Table Narrow="true" Borderless="true">
+                        <TableHeader>
+                            <TableRow>
+                                <TableHeaderCell>Right Ascension</TableHeaderCell>
+                                <TableHeaderCell>Declination</TableHeaderCell>
+                                <TableHeaderCell>Azimuth</TableHeaderCell>
+                                <TableHeaderCell>Altitude</TableHeaderCell>
+                                <TableHeaderCell>Cardinal</TableHeaderCell>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            <TableRow>
+                                <TableRowCell>@obj.RightAscension</TableRowCell>
+                                <TableRowCell>@obj.Declination</TableRowCell>
+                                <TableRowCell>@(obj.AzimuthDegree)&#176; @(obj.AzimuthArcMinute)' @(obj.AzimuthArcSecond)"</TableRowCell>
+                                <TableRowCell>@(obj.AltitudeDegree)&#176; @(obj.AltitudeArcMinute)' @(obj.AzimuthArcSecond)''</TableRowCell>
+                                <TableRowCell>@obj.Cardinal</TableRowCell>
+                            </TableRow>
+                        </TableBody>
+                    </Table>
+                </CardBody>
+            </Card>
         }
-    </div>
-    <div>
-        Finding objects: @_findingObjects
-    </div>
-</div>
+    </Column>
+</Row>
 
 
 @code {
@@ -132,10 +183,31 @@
         public double MaxAltitude { get; set; }
     }
 
+    private string Cardinal(double az)
+    {
+        string[] caridnals = { "N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW", "N" };
+        return caridnals[(int)Math.Round(((double)az * 10 % 3600) / 225)];
+    }
+
+    private record AstroObjectRep(string Name,
+        AstroObject.AstroObjectClassification Classification,
+        double RightAscension,
+        double Declination,
+        int AzimuthDegree,
+        int AzimuthArcMinute,
+        double AzimuthArcSecond,
+        int AltitudeDegree,
+        int AltitudeArcMinute,
+        double AltitudeArcSecond,
+        string Cardinal
+    );
+
     private EditContext? _editContext;
     private ObservingOptions _observingOptions = new ObservingOptions();
     private bool _findingObjects = false;
+    private bool _badConnection = false;
     private IEnumerable<AstroObject> _filteredObjects = Enumerable.Empty<AstroObject>();
+    private IEnumerable<AstroObjectRep> _filteredObjectReps = Enumerable.Empty<AstroObjectRep>();
 
     protected override async Task OnInitializedAsync()
     {
@@ -153,7 +225,33 @@
                 MaxAltitude = 180d
             };
         _editContext = new EditContext(_observingOptions);
+#if DEBUG
+    AstroObject testObject = new AstroObject
+    {
+    Id="47",
+    Name="Ambra Nebula",
+    Classification= new AstroObject.AstroObjectClassification(
+    CatalogueId: new Dictionary<AstroObject.Catalogue, int>
+    {
+    {AstroObject.Catalogue.Messier, 111},
+    {AstroObject.Catalogue.NGC, 4747},
+    {AstroObject.Catalogue.Caldwell, 17}
+    },
+    Type: AstroObject.Type.Diffuse,
+    Subtype: AstroObject.Subtype.None,
+    SubtypeClassification: "Reflection Nebula"
+    ),
+    RightAscension= 84d,
+    Declination= 5.4d
+    };
+    AstroObject secondObject = testObject with {Name="Mia Nebula"};
+    AstroObject thirdObject = testObject with {Name="Ellie Nebula"};
+    _filteredObjects = new List<AstroObject>{testObject, secondObject, thirdObject};
+#else
         _filteredObjects = await GetAllObjects();
+#endif
+        _filteredObjectReps = AstroObjectRepresentations(_filteredObjects, _observingOptions.StartTime, _observingOptions.TimeZone,
+            new GeographicCoords(Latitude: _observingOptions.Latitude, Longitude: _observingOptions.Longitude));
         StateHasChanged();
     }
 
@@ -162,13 +260,13 @@
         // BUSTED - need to figure out jsinterop to get this to work
         //  - See https://developer.mozilla.org/en-US/docs/Web/API/Geolocation_API
         /*
-            <div class="col-lg-4 d-flex">
-                <div class="btn btn-secondary mt-auto"
-                        @onclick="@GetCurrentPosition">
-                    Use my location
-                </div>
-            </div>
-         */
+        <div class="col-lg-4 d-flex">
+            <div class="btn btn-secondary mt-auto"
+                    @onclick="@GetCurrentPosition">
+                Use my location
+        </div>
+        </div>
+        */
         var res = await JSRuntime.InvokeAsync<(double latitude, double longitude)>("geolocation.getLocation");
         StateHasChanged();
     }
@@ -176,13 +274,20 @@
     private async Task HandleValidSubmit()
     {
         _findingObjects = true;
-        _filteredObjects = await GetVisibleObjects();
+        try
+        {
+            _filteredObjects = await GetVisibleObjects();
+            _badConnection = false;
+        }
+        catch
+        {
+            _badConnection = true;
+        }
         _findingObjects = false;
     }
 
     private void HandleInvalidSubmit()
     {
-
     }
 
     private async Task<IEnumerable<AstroObject>> GetVisibleObjects()
@@ -212,11 +317,47 @@
         );
 
         // Call api service
-        return await AstroObjectService.GetObjectsInRegion(minCoords, maxCoords);        
+        return await AstroObjectService.GetObjectsInRegion(minCoords, maxCoords);
+        return Enumerable.Empty<AstroObject>();
     }
 
     private async Task<IEnumerable<AstroObject>> GetAllObjects()
     {
-        return await AstroObjectService.GetAll();
+        try
+        {
+            return await AstroObjectService.GetAll();
+        }
+        catch
+        {
+            return Enumerable.Empty<AstroObject>();
+        }
+    }
+
+    private IEnumerable<AstroObjectRep> AstroObjectRepresentations(IEnumerable<AstroObject> objs, DateTime dateTime, int timeZone, GeographicCoords geoCoords)
+    {
+        return objs.Select(ao =>
+        {
+            var horCoords = new Asterism.EquitorialCoords(RightAscension: ao.RightAscension, Declination: ao.Declination)
+                .ToHorizontalCoords(dateTime, geoCoords, timeZone);
+            int azDegree = (int)Math.Floor(horCoords.Azimuth);
+            int azArcMin = (int)Math.Floor((horCoords.Azimuth - azDegree) * 100);
+            double azArcSec = Math.Round(((horCoords.Azimuth - azDegree) * 100 - azArcMin) * 100, 1);
+            int altDegree = (int)Math.Floor(horCoords.Altitude);
+            int altArcMin = (int)Math.Floor((horCoords.Altitude - altDegree) * 100);
+            double altArcSec = Math.Round(((horCoords.Altitude - altDegree) * 100 - altArcMin) * 100, 1);
+            return new AstroObjectRep(
+                Name: ao.Name,
+                Classification: ao.Classification,
+                RightAscension: ao.RightAscension,
+                Declination: ao.Declination,
+                AzimuthDegree: azDegree,
+                AzimuthArcMinute: azArcMin,
+                AzimuthArcSecond: azArcSec,
+                AltitudeDegree: altDegree,
+                AltitudeArcMinute: altArcMin,
+                AltitudeArcSecond: altArcSec,
+                Cardinal: Cardinal(horCoords.Azimuth)
+            );
+        });
     }
 }

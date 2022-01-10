@@ -7,10 +7,10 @@ EXPOSE 443
 
 FROM mcr.microsoft.com/dotnet/sdk:6.0 AS build
 WORKDIR /src
-COPY ["PhysicsServer/PhysicsServer.csproj", "PhysicsServer/"]
-RUN dotnet restore "PhysicsServer/PhysicsServer.csproj"
+COPY ["PhysicsServer.csproj", ""]
+RUN dotnet restore "./PhysicsServer.csproj"
 COPY . .
-WORKDIR "/src/PhysicsServer"
+WORKDIR "/src/."
 RUN dotnet build "PhysicsServer.csproj" -c Release -o /app/build
 
 FROM build AS publish

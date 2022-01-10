@@ -28,7 +28,7 @@
         {
             None,
             Spiral,
-            Ellip
+            Elliptical,
         }
         public record AstroObjectClassification(
             IDictionary<Catalogue, int> CatalogueId,
