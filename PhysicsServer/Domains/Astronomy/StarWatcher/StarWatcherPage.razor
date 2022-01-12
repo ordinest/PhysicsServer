@@ -1,5 +1,6 @@
 ﻿@page "/astronomy/star-watcher"
 @using Asterism
+@using Humanizer;
 @inject IAstroObjectService AstroObjectService
 @inject IJSRuntime JSRuntime
 
@@ -41,14 +42,23 @@
                                    placeholder="Enter longitude"
                                    @bind-value="@_observingOptions.Longitude" />
                         </Column>
+                        <Column>
+                            <label for="time-zone">Time Zone</label>
+                            <input type="number" step="1" class="form-control" id="time-zone"
+                                   @bind-value="@_observingOptions.TimeZone" />
+                        </Column>
                     </Row>
                     <Divider DividerType="DividerType.TextContent" Text="Viewing Range" />
                     <Row Gutter="(0, 16)">
                         <Column>
                             <label for="min-altitude">Minimum Altitude</label>
                             <input type="number" step="any" class="form-control" id="min-altitude"
-                                   @bind-value="@_observingOptions.MinAltitude" />
-                            <Small TextColor="TextColor.Muted">Use to omit objects too near to the horizon.</Small>
+                                   @bind-value="@_observingOptions.MinAltitude"
+                                   disabled />
+                            <Small TextColor="TextColor.Muted">
+                                (Coming soon)
+                                Use to omit objects too near to the horizon.
+                            </Small>
                         </Column>
                     </Row>
                     <!--
@@ -115,56 +125,67 @@
         </Card>
     </Column>
     <Column>
-        @foreach (var obj in _filteredObjectReps)
+        @if (_filteredObjects.Count() > 0)
         {
-            <!-- Display
-                o ?Name
-                o Classifications
-                o RA/Dec
-                o Alt/Az
-                o Cardinal direction
-            -->
-            <Card>
-                <CardBody>
-                    <Div>
-                        <Text TextWeight="TextWeight.Bold">
-                            @(string.IsNullOrWhiteSpace(obj.Name)
-                        ? ""
-                        : obj.Name + " - "
-                        )
-                        </Text>
-                        <Text>
-                            @string.Join(
-                        " | ",
-                        @obj.Classification.CatalogueId.Keys.Select(
-                        catalogue => $"{catalogue} {obj.Classification.CatalogueId[catalogue]}")
-                        )
-                        </Text>
-                    </Div>
-                    <Divider />
-                    <Table Narrow="true" Borderless="true">
-                        <TableHeader>
-                            <TableRow>
-                                <TableHeaderCell>Right Ascension</TableHeaderCell>
-                                <TableHeaderCell>Declination</TableHeaderCell>
-                                <TableHeaderCell>Azimuth</TableHeaderCell>
-                                <TableHeaderCell>Altitude</TableHeaderCell>
-                                <TableHeaderCell>Cardinal</TableHeaderCell>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            <TableRow>
-                                <TableRowCell>@obj.RightAscension</TableRowCell>
-                                <TableRowCell>@obj.Declination</TableRowCell>
-                                <TableRowCell>@(obj.AzimuthDegree)&#176; @(obj.AzimuthArcMinute)' @(obj.AzimuthArcSecond)"</TableRowCell>
-                                <TableRowCell>@(obj.AltitudeDegree)&#176; @(obj.AltitudeArcMinute)' @(obj.AzimuthArcSecond)''</TableRowCell>
-                                <TableRowCell>@obj.Cardinal</TableRowCell>
-                            </TableRow>
-                        </TableBody>
-                    </Table>
-                </CardBody>
-            </Card>
+            <Div Flex="Flex.JustifyContent.Between">
+                <Small TextWeight="TextWeight.Bold">
+                    Total: @_filteredObjects.Count()
+                </Small>
+                <Small>
+                    @string.Join(" | ", @_filteredObjectDetails.TypeCount.Keys
+                        .Where(t=>_filteredObjectDetails.TypeCount[t] > 0)
+                        .Select(t => $"{AnnotateAstroObjectType(t).Pluralize()} {_filteredObjectDetails.TypeCount[t]}"))
+                </Small>
+            </Div>
+            <Small TextColor="TextColor.Muted">
+            </Small>
         }
+        <ListGroup>
+            @foreach (var obj in _filteredObjectReps)
+            {
+                <!-- Display
+                    o ?Name
+                    o Classifications
+                    o RA/Dec
+                    o Alt/Az
+                    o Cardinal direction
+                -->
+                <ListGroupItem>
+                    <Div Flex="Flex.JustifyContent.Between" Width="Width.Is100" Background="Background.Success">
+                        <Heading Size="HeadingSize.Is6" Margin="Margin.Is1.FromBottom">
+                            <Text TextWeight="TextWeight.Bold">
+                                @(string.IsNullOrEmpty(obj.Name) ? "" : $"{obj.Name} - ")
+                            </Text>
+                            <Text TextWeight="TextWeight.Normal">
+                                @string.Join(" | ",
+                            @obj.Classification.CatalogueId.Keys.Select(
+                            c=>$"{c} {obj.Classification.CatalogueId[c]}"
+                            )
+                            )
+                            </Text>
+                        </Heading>
+                        <Div>
+                            <Text TextWeight="TextWeight.Bold">RA:</Text>
+                            @(obj.RightAscension.Hours)h @(obj.RightAscension.Minutes)m @(obj.RightAscension.Seconds)s |
+                            <Text TextWeight="TextWeight.Bold">Dec:</Text>
+                            @(obj.Declination.Degrees)&#176; @(obj.Declination.Minutes)' @(obj.Declination.Seconds)"
+                        </Div>
+                    </Div>
+                    <Div>
+                        <Div TextWeight="TextWeight.Bold">Azimuth</Div>
+                        <Div>
+                            @(obj.StartAzimuth.Degrees)&#176; @(obj.StartAzimuth.Minutes)' @(obj.StartAzimuth.Seconds)" -
+                            @(obj.EndAzimuth.Degrees)&#176; @(obj.EndAzimuth.Minutes)' @(obj.EndAzimuth.Seconds)"
+                        </Div>
+                        <Div TextWeight="TextWeight.Bold">Altitude</Div>
+                        <Div>
+                            @(obj.StartAltitude.Degrees)&#176; @(obj.StartAltitude.Minutes)' @(obj.StartAltitude.Seconds)" -
+                            @(obj.EndAltitude.Degrees)&#176; @(obj.EndAltitude.Minutes)' @(obj.EndAltitude.Seconds)"
+                        </Div>
+                    </Div>
+                </ListGroupItem>
+            }
+        </ListGroup>
     </Column>
 </Row>
 
@@ -189,25 +210,68 @@
         return caridnals[(int)Math.Round(((double)az * 10 % 3600) / 225)];
     }
 
+
+    private string DegreeRepresentation(double degrees)
+    {
+        int d = (int)Math.Floor(degrees);
+        int m = (int)Math.Floor((degrees - d) * 100);
+        double s = Math.Round(((degrees - d) * 100 - m) * 100, 1);
+        return $"{d}";
+    }
+
     private record AstroObjectRep(string Name,
         AstroObject.AstroObjectClassification Classification,
-        double RightAscension,
-        double Declination,
-        int AzimuthDegree,
-        int AzimuthArcMinute,
-        double AzimuthArcSecond,
-        int AltitudeDegree,
-        int AltitudeArcMinute,
-        double AltitudeArcSecond,
+        HoursMinutesSeconds RightAscension,
+        DegreesMinutesSeconds Declination,
+        DegreesMinutesSeconds StartAzimuth,
+        DegreesMinutesSeconds StartAltitude,
+        DegreesMinutesSeconds EndAzimuth,
+        DegreesMinutesSeconds EndAltitude,
         string Cardinal
     );
+
+    private record ObjectEnumerationDetails
+    {
+        public IDictionary<AstroObject.Type, int>? TypeCount { get; init; }
+    }
+
+    private class DegreesMinutesSeconds
+    {
+        public int Degrees { get; set; }
+        public int Minutes { get; set; }
+        public double Seconds { get; set; }
+
+        public DegreesMinutesSeconds(double degreesDecimal, int secondsDecimalPlaces)
+        {
+            Degrees = (int)Math.Floor(degreesDecimal);
+            Minutes = (int)Math.Floor(60 * (degreesDecimal - Degrees));
+            Seconds = Math.Round(60 * (60 * (degreesDecimal - Degrees) - Minutes), secondsDecimalPlaces);
+        }
+    }
+
+    private class HoursMinutesSeconds
+    {
+        public int Hours { get; set; }
+        public int Minutes { get; set; }
+        public double Seconds { get; set; }
+
+        public HoursMinutesSeconds(double degreesDecimal, int secondsDecimalPlaces)
+        {
+            var hoursDecimal = degreesDecimal / 15;
+            Hours = (int)Math.Floor(hoursDecimal);
+            Minutes = (int)Math.Floor(60 * (hoursDecimal - Hours));
+            Seconds = Math.Round(60 * (60 * (hoursDecimal - Hours) - Minutes), secondsDecimalPlaces);
+        }
+    }
 
     private EditContext? _editContext;
     private ObservingOptions _observingOptions = new ObservingOptions();
     private bool _findingObjects = false;
     private bool _badConnection = false;
+    private IEnumerable<AstroObject> _objects = Enumerable.Empty<AstroObject>();
     private IEnumerable<AstroObject> _filteredObjects = Enumerable.Empty<AstroObject>();
     private IEnumerable<AstroObjectRep> _filteredObjectReps = Enumerable.Empty<AstroObjectRep>();
+    private ObjectEnumerationDetails _filteredObjectDetails;
 
     protected override async Task OnInitializedAsync()
     {
@@ -216,18 +280,20 @@
         // Firefox does not support seconds, so round to previous minute
         _observingOptions = new ObservingOptions
             {
-                StartTime = now.AddSeconds(-now.Second),
-                EndTime = now.AddSeconds(-now.Second).AddHours(1),
+                StartTime = DateTime.Now.Date.AddHours(System.Math.Max(20, DateTime.Now.Hour)),
+                EndTime = DateTime.Now.Date.AddHours(System.Math.Max(22, DateTime.Now.Hour + 2)),
                 TimeZone = -5,
                 MinAzimuth = 0d,
                 MaxAzimuth = 180d,
                 MinAltitude = 0d,
-                MaxAltitude = 180d
+                MaxAltitude = 180d,
+                Latitude = 36.131839d,
+                Longitude = -80.278994d
             };
         _editContext = new EditContext(_observingOptions);
 #if DEBUG
     AstroObject testObject = new AstroObject
-    {
+    {   // Based on Orion Nebula
     Id="47",
     Name="Ambra Nebula",
     Classification= new AstroObject.AstroObjectClassification(
@@ -241,17 +307,43 @@
     Subtype: AstroObject.Subtype.None,
     SubtypeClassification: "Reflection Nebula"
     ),
-    RightAscension= 84d,
-    Declination= 5.4d
+    RightAscension= 84.09471d,
+    Declination= -5.37822d
     };
-    AstroObject secondObject = testObject with {Name="Mia Nebula"};
-    AstroObject thirdObject = testObject with {Name="Ellie Nebula"};
-    _filteredObjects = new List<AstroObject>{testObject, secondObject, thirdObject};
+    AstroObject secondObject = testObject with {
+    // Based on NGC 4755 - Jewel Box Cluster
+    Name="Mia Cluster",
+    Classification = testObject.Classification with
+    {
+    Type = AstroObject.Type.Open,
+    Subtype = AstroObject.Subtype.None,
+    SubtypeClassification = ""
+    },
+    RightAscension = 15d*(12d+54d/60+57.63d/60/60),
+    Declination = -60d-28d/60-31.8d/60/60
+    };
+    AstroObject thirdObject = testObject with {
+    // Based on Messier 52 - Scorpion Cluster
+    Name="Ellie Cluster",
+    Classification = testObject.Classification with
+    {
+    Type = AstroObject.Type.Open,
+    Subtype = AstroObject.Subtype.None,
+    SubtypeClassification = ""
+    },
+    RightAscension = 15d*(23d+25d/6+44.85d/60/60),
+    Declination = 61d+42d/60+59.6d/60/60
+    };
+    _objects = new List<AstroObject>{testObject, secondObject, thirdObject};
 #else
         _filteredObjects = await GetAllObjects();
 #endif
-        _filteredObjectReps = AstroObjectRepresentations(_filteredObjects, _observingOptions.StartTime, _observingOptions.TimeZone,
+        _objects = await GetAllObjects();
+        /*
+        _filteredObjects = _objects;
+        _filteredObjectReps = AstroObjectRepresentations(_filteredObjects, _observingOptions.StartTime, _observingOptions.EndTime, _observingOptions.TimeZone,
             new GeographicCoords(Latitude: _observingOptions.Latitude, Longitude: _observingOptions.Longitude));
+        */
         StateHasChanged();
     }
 
@@ -271,54 +363,65 @@
         StateHasChanged();
     }
 
-    private async Task HandleValidSubmit()
+    private void HandleValidSubmit()
     {
-        _findingObjects = true;
-        try
-        {
-            _filteredObjects = await GetVisibleObjects();
-            _badConnection = false;
-        }
-        catch
-        {
-            _badConnection = true;
-        }
-        _findingObjects = false;
+        _filteredObjects = GetVisibleObjects(_objects, _observingOptions);
+        _filteredObjectReps = AstroObjectRepresentations(_filteredObjects, _observingOptions.StartTime, _observingOptions.EndTime, _observingOptions.TimeZone,
+            new GeographicCoords(_observingOptions.Latitude, _observingOptions.Longitude));
+        int typeCount(AstroObject.Type t) => _filteredObjects.Where(o => o.Classification?.Type == t).Count();
+        _filteredObjectDetails = new ObjectEnumerationDetails
+            {
+                TypeCount = new Dictionary<AstroObject.Type, int>
+            {
+                {AstroObject.Type.Elliptical, typeCount(AstroObject.Type.Elliptical)},
+                {AstroObject.Type.Lenticular, typeCount(AstroObject.Type.Lenticular)},
+                {AstroObject.Type.Spiral, typeCount(AstroObject.Type.Spiral)},
+                {AstroObject.Type.Irregular, typeCount(AstroObject.Type.Irregular)},
+                {AstroObject.Type.Globular, typeCount(AstroObject.Type.Globular)},
+                {AstroObject.Type.Open, typeCount(AstroObject.Type.Open)},
+                {AstroObject.Type.SupernovaRemnant, typeCount(AstroObject.Type.SupernovaRemnant)},
+                {AstroObject.Type.Diffuse, typeCount(AstroObject.Type.Diffuse)},
+                {AstroObject.Type.PlanetaryNebula, typeCount(AstroObject.Type.PlanetaryNebula)},
+            }
+            };
+        StateHasChanged();
     }
 
     private void HandleInvalidSubmit()
     {
     }
 
-    private async Task<IEnumerable<AstroObject>> GetVisibleObjects()
+    private IEnumerable<AstroObject> GetVisibleObjects(IEnumerable<AstroObject> set, ObservingOptions observingOptions)
     {
-        // Convert horizontal coordinates to equitorial coordinates
-        var minCoords = new HorizontalCoords(
-            Azimuth: _observingOptions.MinAzimuth,
-            Altitude: _observingOptions.MinAltitude
-        ).ToEquitorialCoords(
-            dateTime: _observingOptions.StartTime,
-            geographicCoords: new GeographicCoords(
-                Latitude: _observingOptions.Latitude,
-                Longitude: _observingOptions.Longitude
-            ),
-            timeZone: _observingOptions.TimeZone
-        );
-        var maxCoords = new HorizontalCoords(
-            Azimuth: _observingOptions.MaxAzimuth,
-            Altitude: _observingOptions.MaxAltitude
-        ).ToEquitorialCoords(
-            dateTime: _observingOptions.EndTime,
-            geographicCoords: new GeographicCoords(
-                Latitude: _observingOptions.Latitude,
-                Longitude: _observingOptions.Longitude
-            ),
-            timeZone: _observingOptions.TimeZone
-        );
+        DateOnly observingDate = DateOnly.FromDateTime(observingOptions.StartTime.Date);
+        GeographicCoords geo = new(observingOptions.Latitude, observingOptions.Longitude);
+        var output = set.Where(o => AboveHorizonDuringPeriod(o, observingDate, observingOptions.StartTime, observingOptions.EndTime, geo, observingOptions.TimeZone));
+        return output.ToList();
+    }
 
-        // Call api service
-        return await AstroObjectService.GetObjectsInRegion(minCoords, maxCoords);
-        return Enumerable.Empty<AstroObject>();
+    private bool AboveHorizonDuringPeriod(AstroObject o, DateOnly observingDate, DateTime startTime, DateTime endTime, GeographicCoords geo, int timeZone)
+    {
+        EquitorialCoords eq = new(o.RightAscension, o.Declination);
+
+        // Handle always above/below horizon cases
+        var setBehavior = Asterism.LocalSystem.ObjectSets(eq, geo);
+        if (setBehavior == Asterism.LocalSystem.ObjectSetBehavior.AlwaysBelowHorizon)
+            return false;
+        else if (setBehavior == Asterism.LocalSystem.ObjectSetBehavior.AlwaysAboveHorizon)
+            return true;
+
+        // Get rising/setting times
+        double setHour = Asterism.LocalSystem.SetTime(eq, observingDate, geo, timeZone);
+        double riseHour = Asterism.LocalSystem.RiseTime(eq, observingDate, geo, timeZone);
+        DateTime setTime = new DateTime(observingDate.Year, observingDate.Month, observingDate.Day)
+            .AddHours(setHour + (setHour < riseHour ? 24d - 4d / 60 : 0)); // If object sets before it rises in the day, then wrap rising time to next day
+        DateTime riseTime = new DateTime(observingDate.Year, observingDate.Month, observingDate.Day)
+            .AddHours(riseHour);
+
+        // Check if time periods overlap
+        bool overlap = startTime < setTime && riseTime < endTime;
+
+        return overlap;
     }
 
     private async Task<IEnumerable<AstroObject>> GetAllObjects()
@@ -333,31 +436,60 @@
         }
     }
 
-    private IEnumerable<AstroObjectRep> AstroObjectRepresentations(IEnumerable<AstroObject> objs, DateTime dateTime, int timeZone, GeographicCoords geoCoords)
+    private IEnumerable<AstroObjectRep> AstroObjectRepresentations(IEnumerable<AstroObject> objs, DateTime dateTimeStart, DateTime dateTimeEnd, int timeZone, GeographicCoords geoCoords)
     {
         return objs.Select(ao =>
         {
-            var horCoords = new Asterism.EquitorialCoords(RightAscension: ao.RightAscension, Declination: ao.Declination)
-                .ToHorizontalCoords(dateTime, geoCoords, timeZone);
-            int azDegree = (int)Math.Floor(horCoords.Azimuth);
-            int azArcMin = (int)Math.Floor((horCoords.Azimuth - azDegree) * 100);
-            double azArcSec = Math.Round(((horCoords.Azimuth - azDegree) * 100 - azArcMin) * 100, 1);
-            int altDegree = (int)Math.Floor(horCoords.Altitude);
-            int altArcMin = (int)Math.Floor((horCoords.Altitude - altDegree) * 100);
-            double altArcSec = Math.Round(((horCoords.Altitude - altDegree) * 100 - altArcMin) * 100, 1);
+            var eqCoords = new EquitorialCoords(RightAscension: ao.RightAscension, Declination: ao.Declination);
+            var startHorCoords = eqCoords.ToHorizontalCoords(dateTimeStart, geoCoords, timeZone);
+            var endHorCoords = eqCoords.ToHorizontalCoords(dateTimeEnd, geoCoords, timeZone);
             return new AstroObjectRep(
                 Name: ao.Name,
                 Classification: ao.Classification,
-                RightAscension: ao.RightAscension,
-                Declination: ao.Declination,
-                AzimuthDegree: azDegree,
-                AzimuthArcMinute: azArcMin,
-                AzimuthArcSecond: azArcSec,
-                AltitudeDegree: altDegree,
-                AltitudeArcMinute: altArcMin,
-                AltitudeArcSecond: altArcSec,
-                Cardinal: Cardinal(horCoords.Azimuth)
-            );
+                RightAscension: new HoursMinutesSeconds(ao.RightAscension, 1),
+                Declination: new DegreesMinutesSeconds(ao.Declination, 1),
+                StartAzimuth: new DegreesMinutesSeconds(startHorCoords.Azimuth, 1),
+                StartAltitude: new DegreesMinutesSeconds(startHorCoords.Altitude, 1),
+                EndAzimuth: new DegreesMinutesSeconds(endHorCoords.Azimuth, 1),
+                EndAltitude: new DegreesMinutesSeconds(endHorCoords.Altitude, 1),
+                    Cardinal: Cardinal(startHorCoords.Azimuth)
+                );
         });
+    }
+
+    private string AnnotateAstroObjectType(AstroObject.Type t)
+    {
+        var map = new Dictionary<AstroObject.Type, string>
+        {
+            {AstroObject.Type.Elliptical, "Elliptical Galaxy"},
+            {AstroObject.Type.Lenticular, "Lenticular Galaxy"},
+            {AstroObject.Type.Spiral, "Spiral Galaxy"},
+            {AstroObject.Type.Irregular, "Irregular Galaxy"},
+            {AstroObject.Type.Globular, "Globular Cluster"},
+            {AstroObject.Type.Open, "Open Cluster"},
+            {AstroObject.Type.SupernovaRemnant, "Supernova Remnant"},
+            {AstroObject.Type.Diffuse, "Diffuse Nebula"},
+            {AstroObject.Type.PlanetaryNebula, "Planetary Nebula" }
+        };
+        return map[t];
+    }
+
+    private bool IsGalaxy(AstroObject.Type t)
+    {
+        return t == AstroObject.Type.Elliptical
+            || t == AstroObject.Type.Lenticular
+            || t == AstroObject.Type.Spiral
+            || t == AstroObject.Type.Irregular;
+    }
+    private bool IsCluster(AstroObject.Type t)
+    {
+        return t == AstroObject.Type.Globular
+            || t == AstroObject.Type.Open;
+    }
+    private bool IsNebula(AstroObject.Type t)
+    {
+        return t == AstroObject.Type.SupernovaRemnant
+            || t == AstroObject.Type.Diffuse
+            || t == AstroObject.Type.PlanetaryNebula;
     }
 }

@@ -9,10 +9,19 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Asterism" Version="1.2.0" />
+    <Compile Remove="wwwroot\NewFolder\**" />
+    <Content Remove="wwwroot\NewFolder\**" />
+    <EmbeddedResource Remove="wwwroot\NewFolder\**" />
+    <None Remove="wwwroot\NewFolder\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Asterism" Version="1.3.0" />
     <PackageReference Include="Blazorise" Version="0.9.5.4" />
     <PackageReference Include="Blazorise.Bootstrap" Version="0.9.5.4" />
     <PackageReference Include="Blazorise.Icons.FontAwesome" Version="0.9.5.4" />
+    <PackageReference Include="Blazorise.Sidebar" Version="0.9.5.4" />
+    <PackageReference Include="Humanizer" Version="2.13.14" />
     <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.14.0" />
   </ItemGroup>
 

@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.32014.148
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PhysicsServer", "PhysicsServer\PhysicsServer.csproj", "{B4EF20D2-99B3-4A4A-B872-8157065C769A}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PhysicsServer", "PhysicsServer\PhysicsServer.csproj", "{B4EF20D2-99B3-4A4A-B872-8157065C769A}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
