@@ -131,16 +131,17 @@
         </Card>
     </Column>
     <Column>
-        @if (_filteredObjects.Count() > 0)
+        @if (_filteredObjectDetails.Count > 0)
         {
             <Div Flex="Flex.JustifyContent.Between">
                 <Small TextWeight="TextWeight.Bold">
                     Total: @_filteredObjects.Count()
                 </Small>
                 <Small>
-                    @string.Join(" | ", @_filteredObjectDetails.TypeCount.Keys
-                        .Where(t=>_filteredObjectDetails.TypeCount[t] > 0)
-                        .Select(t => $"{AnnotateAstroObjectType(t).Pluralize()} {_filteredObjectDetails.TypeCount[t]}"))
+                    @string.Join(" | ",
+                        @_filteredObjectDetails.SubtypeCount.Where(kv=>kv.Value>0)
+                            .Select(kv=>$"{kv.Key} {AstroObject.SubtypeToType[kv.Key].ToString().Pluralize()} {kv.Value}")
+                    )
                 </Small>
             </Div>
             <Small TextColor="TextColor.Muted">
@@ -157,36 +158,75 @@
                     o Cardinal direction
                 -->
                 <ListGroupItem>
-                    <Div Flex="Flex.JustifyContent.Between" Width="Width.Is100" Background="Background.Success">
-                        <Heading Size="HeadingSize.Is6" Margin="Margin.Is1.FromBottom">
-                            <Text TextWeight="TextWeight.Bold">
-                                @(string.IsNullOrEmpty(obj.Name) ? "" : $"{obj.Name} - ")
-                            </Text>
-                            <Text TextWeight="TextWeight.Normal">
-                                @string.Join(" | ",
-                            @obj.Classification.CatalogueId.Keys.Select(
-                            c=>$"{c} {obj.Classification.CatalogueId[c]}"
-                            )
-                            )
-                            </Text>
-                        </Heading>
+                    <Div Flex="Flex.JustifyContent.Between" Width="Width.Is100">
                         <Div>
-                            <Text TextWeight="TextWeight.Bold">RA:</Text>
-                            @(obj.RightAscension.Hours)h @(obj.RightAscension.Minutes)m @(obj.RightAscension.Seconds)s |
-                            <Text TextWeight="TextWeight.Bold">Dec:</Text>
-                            @(obj.Declination.Degrees)&#176; @(obj.Declination.Minutes)' @(obj.Declination.Seconds)"
+                            <Heading Size="HeadingSize.Is6" Margin="Margin.Is1.FromBottom">
+                                <Text TextWeight="TextWeight.Bold">
+                                    @obj.Name
+                                </Text>
+                                <Text>
+                                    @(string.IsNullOrEmpty(obj.Name) ? "" : $" – ")
+                                </Text>
+                                <Text TextWeight="TextWeight.Normal">
+                                    @string.Join(" | ",
+                                @obj.Classification.CatalogueId.Keys.Select(
+                                c=>$"{c} {obj.Classification.CatalogueId[c]}"
+                                )
+                                )
+                                </Text>
+                            </Heading>
+                            <Small>
+                                <Div>
+                                    <Text TextWeight="TextWeight.Bold">
+                                        Type: 
+                                    </Text>
+                                    @obj.Classification.Type
+                                </Div>
+                                @if (@obj.Classification.Subtype != AstroObject.Subtype.None)
+                                {
+                                    <Div>
+                                        <Text TextWeight="TextWeight.Bold">
+                                            Subtype: 
+                                        </Text>
+                                        @obj.Classification.Subtype
+                                    </Div>
+                                }
+                                @if (!string.IsNullOrEmpty(@obj.Classification.SubtypeClassification))
+                                {
+                                    <Div>
+                                        <Text TextWeight="TextWeight.Bold">
+                                            Category: 
+                                        </Text>
+                                        @obj.Classification.SubtypeClassification
+                                    </Div>
+                                }
+                            </Small>
                         </Div>
-                    </Div>
-                    <Div>
-                        <Div TextWeight="TextWeight.Bold">Azimuth</Div>
                         <Div>
-                            @(obj.StartAzimuth.Degrees)&#176; @(obj.StartAzimuth.Minutes)' @(obj.StartAzimuth.Seconds)" -
-                            @(obj.EndAzimuth.Degrees)&#176; @(obj.EndAzimuth.Minutes)' @(obj.EndAzimuth.Seconds)"
-                        </Div>
-                        <Div TextWeight="TextWeight.Bold">Altitude</Div>
-                        <Div>
-                            @(obj.StartAltitude.Degrees)&#176; @(obj.StartAltitude.Minutes)' @(obj.StartAltitude.Seconds)" -
-                            @(obj.EndAltitude.Degrees)&#176; @(obj.EndAltitude.Minutes)' @(obj.EndAltitude.Seconds)"
+                            <Small>
+                                <Text TextWeight="TextWeight.Bold">RA:</Text>
+                                @(obj.RightAscension.Hours)h @(obj.RightAscension.Minutes)m @(obj.RightAscension.Seconds)s |
+                                <Text TextWeight="TextWeight.Bold">Dec:</Text>
+                                @(obj.Declination.Degrees)&#176; @(obj.Declination.Minutes)' @(obj.Declination.Seconds)"
+                            </Small>
+                            <Small>
+                                <Div Flex="Flex.JustifyContent.Between">
+                                    <Text TextWeight="TextWeight.Bold">Azimuth</Text>
+                                    <Text>
+                                        @(obj.StartAzimuth.Degrees)&#176; @(obj.StartAzimuth.Minutes)' @(obj.StartAzimuth.Seconds)"
+                                        &ndash;
+                                        @(obj.EndAzimuth.Degrees)&#176; @(obj.EndAzimuth.Minutes)' @(obj.EndAzimuth.Seconds)"
+                                    </Text>
+                                </Div>
+                                <Div Flex="Flex.JustifyContent.Between">
+                                    <Text TextWeight="TextWeight.Bold">Altitude</Text>
+                                    <Text>
+                                        @(obj.StartAltitude.Degrees)&#176; @(obj.StartAltitude.Minutes)' @(obj.StartAltitude.Seconds)"
+                                        &ndash;
+                                        @(obj.EndAltitude.Degrees)&#176; @(obj.EndAltitude.Minutes)' @(obj.EndAltitude.Seconds)"
+                                    </Text>
+                                </Div>
+                            </Small>
                         </Div>
                     </Div>
                 </ListGroupItem>
@@ -238,7 +278,9 @@
 
     private record ObjectEnumerationDetails
     {
+        public int Count{ get; init; }
         public IDictionary<AstroObject.Type, int> TypeCount { get; init; } = ImmutableDictionary<AstroObject.Type, int>.Empty;
+        public IDictionary<AstroObject.Subtype, int> SubtypeCount { get; init; } = ImmutableDictionary<AstroObject.Subtype, int>.Empty;
     }
 
     private class DegreesMinutesSeconds
@@ -338,22 +380,7 @@
         _filteredObjects = GetVisibleObjects(_objects, _observingOptions);
         _filteredObjectReps = AstroObjectRepresentations(_filteredObjects, _observingOptions.StartTime, _observingOptions.EndTime, _observingOptions.TimeZone,
             new GeographicCoords(_observingOptions.Latitude, _observingOptions.Longitude));
-        int typeCount(AstroObject.Type t) => _filteredObjects.Where(o => o.Classification?.Type == t).Count();
-        _filteredObjectDetails = new ObjectEnumerationDetails
-            {
-                TypeCount = new Dictionary<AstroObject.Type, int>
-                {
-                    {AstroObject.Type.Elliptical, typeCount(AstroObject.Type.Elliptical)},
-                    {AstroObject.Type.Lenticular, typeCount(AstroObject.Type.Lenticular)},
-                    {AstroObject.Type.Spiral, typeCount(AstroObject.Type.Spiral)},
-                    {AstroObject.Type.Irregular, typeCount(AstroObject.Type.Irregular)},
-                    {AstroObject.Type.Globular, typeCount(AstroObject.Type.Globular)},
-                    {AstroObject.Type.Open, typeCount(AstroObject.Type.Open)},
-                    {AstroObject.Type.SupernovaRemnant, typeCount(AstroObject.Type.SupernovaRemnant)},
-                    {AstroObject.Type.Diffuse, typeCount(AstroObject.Type.Diffuse)},
-                    {AstroObject.Type.PlanetaryNebula, typeCount(AstroObject.Type.PlanetaryNebula)},
-                }
-            };
+        _filteredObjectDetails = AstroObjectDetails(_filteredObjects);
         StateHasChanged();
     }
 
@@ -375,8 +402,8 @@
     {AstroObject.Catalogue.NGC, 4747},
     {AstroObject.Catalogue.Caldwell, 17}
     },
-    Type: AstroObject.Type.Diffuse,
-    Subtype: AstroObject.Subtype.None,
+    Type: AstroObject.Type.Nebula,
+    Subtype: AstroObject.Subtype.Diffuse,
     SubtypeClassification: "Reflection Nebula"
     ),
     RightAscension= 84.09471d,
@@ -387,8 +414,8 @@
     Name="Mia Cluster",
     Classification = testObject.Classification with
     {
-    Type = AstroObject.Type.Open,
-    Subtype = AstroObject.Subtype.None,
+    Type = AstroObject.Type.Cluster,
+    Subtype = AstroObject.Subtype.Open,
     SubtypeClassification = ""
     },
     RightAscension = 15d*(12d+54d/60+57.63d/60/60),
@@ -399,8 +426,8 @@
     Name="Ellie Cluster",
     Classification = testObject.Classification with
     {
-    Type = AstroObject.Type.Open,
-    Subtype = AstroObject.Subtype.None,
+    Type = AstroObject.Type.Cluster,
+    Subtype = AstroObject.Subtype.Open,
     SubtypeClassification = ""
     },
     RightAscension = 15d*(23d+25d/6+44.85d/60/60),
@@ -467,20 +494,17 @@
         });
     }
 
-    private string AnnotateAstroObjectType(AstroObject.Type t)
+    private ObjectEnumerationDetails AstroObjectDetails(IEnumerable<AstroObject> objs)
     {
-        var map = new Dictionary<AstroObject.Type, string>
+        int typeCount(AstroObject.Type t) => objs.Where(o => o.Classification?.Type == t).Count();
+        int subTypeCount(AstroObject.Subtype s) => objs.Where(o => o.Classification?.Subtype == s).Count();
+        return new ObjectEnumerationDetails
         {
-            {AstroObject.Type.Elliptical, "Elliptical Galaxy"},
-            {AstroObject.Type.Lenticular, "Lenticular Galaxy"},
-            {AstroObject.Type.Spiral, "Spiral Galaxy"},
-            {AstroObject.Type.Irregular, "Irregular Galaxy"},
-            {AstroObject.Type.Globular, "Globular Cluster"},
-            {AstroObject.Type.Open, "Open Cluster"},
-            {AstroObject.Type.SupernovaRemnant, "Supernova Remnant"},
-            {AstroObject.Type.Diffuse, "Diffuse Nebula"},
-            {AstroObject.Type.PlanetaryNebula, "Planetary Nebula" }
+            Count = objs.Count(),
+            TypeCount = Enum.GetValues<AstroObject.Type>()
+                .ToDictionary(t => t, t => typeCount(t)),
+            SubtypeCount = Enum.GetValues<AstroObject.Subtype>()
+                .ToDictionary(st => st, st => subTypeCount(st)),
         };
-        return map[t];
     }
 }

@@ -5,6 +5,7 @@ using PhysicsServer.Domains.Astronomy;
 using Blazorise.Bootstrap;
 using Blazorise;
 using Blazorise.Icons.FontAwesome;
+using Humanizer.Inflections;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -54,5 +55,8 @@ app.UseRouting();
 
 app.MapBlazorHub();
 app.MapFallbackToPage("/_Host");
+
+// Set physics jargon (used in the Humanizer program)
+Vocabularies.Default.AddPlural("Nebula", "Nebulae");
 
 app.Run();

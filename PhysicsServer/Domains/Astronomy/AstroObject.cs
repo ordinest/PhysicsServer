@@ -11,6 +11,17 @@
         public enum Type
         {
             None,
+            Planet,
+            Galaxy,
+            Cluster,
+            Nebula,
+            DoubleStar,
+            Asterism,
+            StarCloud
+        }
+        public enum Subtype
+        {
+            None,
             // Galaxies
             Spiral,
             Elliptical,
@@ -23,12 +34,6 @@
             SupernovaRemnant,
             Diffuse,
             PlanetaryNebula,
-        }
-        public enum Subtype
-        {
-            None,
-            Spiral,
-            Elliptical,
         }
         public record AstroObjectClassification(
             IDictionary<Catalogue, int> CatalogueId,
@@ -73,14 +78,21 @@
         public double Declination { get; init; }
 
 
-        private bool IsGalaxy => Classification?.Type == Type.Elliptical
-                || Classification?.Type == Type.Lenticular
-                || Classification?.Type == Type.Spiral
-                || Classification?.Type == Type.Irregular;
-        private bool IsCluster => Classification?.Type == Type.Globular
-                || Classification?.Type == Type.Open;
-        private bool IsNebula => Classification?.Type == Type.SupernovaRemnant
-                || Classification?.Type == Type.Diffuse
-                || Classification?.Type == Type.PlanetaryNebula;
+        public static readonly Dictionary<Subtype, Type> SubtypeToType = new Dictionary<Subtype, Type>
+        {
+            { Subtype.None, Type.None },
+            // Galaxies
+            { Subtype.Spiral, Type.Galaxy },
+            { Subtype.Elliptical, Type.Galaxy },
+            { Subtype.Irregular , Type.Galaxy },
+            { Subtype.Lenticular, Type.Galaxy },
+            // Clusters,
+            { Subtype.Globular, Type.Cluster },
+            { Subtype.Open,Type.Cluster },
+            // Nebulae
+            { Subtype.SupernovaRemnant, Type.Nebula },
+            { Subtype.Diffuse, Type.Nebula },
+            { Subtype.PlanetaryNebula, Type.Nebula },
+        };
     }
 }
