@@ -10,30 +10,30 @@
         }
         public enum Type
         {
-            None,
-            Planet,
-            Galaxy,
-            Cluster,
-            Nebula,
-            DoubleStar,
-            Asterism,
-            StarCloud
+            None = 0,
+            Galaxy = 1,
+            Cluster = 2,
+            Nebula = 3,
+            DoubleStar = 4,
+            Asterism = 5,
+            StarCloud = 6,
+            Planet = 7,
         }
         public enum Subtype
         {
-            None,
+            None = 0,
             // Galaxies
-            Spiral,
-            Elliptical,
-            Irregular,
-            Lenticular,
+            Spiral = 1,
+            Elliptical = 2,
+            Irregular = 3,
+            Lenticular = 4,
             // Clusters
-            Globular,
-            Open,
+            Globular = 5,
+            Open = 6,
             // Nebulae
-            SupernovaRemnant,
-            Diffuse,
-            PlanetaryNebula,
+            SupernovaRemnant = 7,
+            Diffuse = 8,
+            PlanetaryNebula =9,
         }
         public record AstroObjectClassification(
             IDictionary<Catalogue, int> CatalogueId,
