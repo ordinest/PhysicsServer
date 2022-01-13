@@ -94,5 +94,17 @@
             { Subtype.Diffuse, Type.Nebula },
             { Subtype.PlanetaryNebula, Type.Nebula },
         };
+
+        public static readonly Dictionary<Type, IEnumerable<Subtype>> TypeToSubtypes = new Dictionary<Type, IEnumerable<Subtype>>
+        {
+            {Type.None, new List<Subtype>{ Subtype.None } },
+            {Type.Galaxy, new List<Subtype>{Subtype.Elliptical, Subtype.Spiral, Subtype.Irregular, Subtype.Lenticular } },
+            {Type.Cluster, new List<Subtype>{Subtype.Globular, Subtype.Open } },
+            {Type.Nebula, new List<Subtype>{Subtype.SupernovaRemnant, Subtype.Diffuse, Subtype.PlanetaryNebula } },
+            {Type.DoubleStar,  Enumerable.Empty<Subtype>()},
+            {Type.Asterism, Enumerable.Empty<Subtype>()},
+            {Type.StarCloud, Enumerable.Empty<Subtype>()},
+            {Type.Planet, Enumerable.Empty<Subtype>()},
+        };
     }
 }

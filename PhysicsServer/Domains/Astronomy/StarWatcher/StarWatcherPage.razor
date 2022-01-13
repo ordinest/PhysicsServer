@@ -133,14 +133,20 @@
     <Column>
         @if (_filteredObjectDetails.Count > 0)
         {
-            <Div Flex="Flex.JustifyContent.Between">
-                <Small TextWeight="TextWeight.Bold">
+            <Div Flex="Flex.JustifyContent.Between.AlignItems.End">
+                <Small TextWeight="TextWeight.Bold" Width="Width.Is25">
                     Total: @_filteredObjects.Count()
                 </Small>
-                <Small>
+                <Small Width="Width.Is75">
                     @string.Join(" | ",
                         @_filteredObjectDetails.SubtypeCount.Where(kv=>kv.Value>0)
+                            .Where(kv => _filteredObjectDetails.TypeCount[AstroObject.SubtypeToType[kv.Key]] > 0)
                             .Select(kv=>$"{kv.Key} {AstroObject.SubtypeToType[kv.Key].ToString().Pluralize()} {kv.Value}")
+                            .Concat(// Sequence above omits objects with no subtype, so add them on
+                                @_filteredObjectDetails.TypeCount
+                                    .Where(kv => kv.Value - SubtypesOfTypeCount(_filteredObjectDetails,kv.Key)>0)
+                                    .Select(kv => $"{kv.Key.ToString().Pluralize()} {kv.Value - SubtypesOfTypeCount(_filteredObjectDetails, kv.Key)}")
+                                )
                     )
                 </Small>
             </Div>
@@ -150,13 +156,6 @@
         <ListGroup>
             @foreach (var obj in _filteredObjectReps)
             {
-                <!-- Display
-                    o ?Name
-                    o Classifications
-                    o RA/Dec
-                    o Alt/Az
-                    o Cardinal direction
-                -->
                 <ListGroupItem>
                     <Div Flex="Flex.JustifyContent.Between" Width="Width.Is100">
                         <Div>
@@ -389,7 +388,8 @@
     }
 
     private async Task<IEnumerable<AstroObject>> FetchObjects()
-    {
+    {        return await AstroObjectService.GetAll();
+
 #if DEBUG
     AstroObject testObject = new AstroObject
     {   // Based on Orion Nebula
@@ -506,5 +506,11 @@
             SubtypeCount = Enum.GetValues<AstroObject.Subtype>()
                 .ToDictionary(st => st, st => subTypeCount(st)),
         };
+    }
+
+    private int SubtypesOfTypeCount(ObjectEnumerationDetails details, AstroObject.Type type)
+    {
+        var subtypes = AstroObject.TypeToSubtypes[type];
+        return subtypes.Sum(st => _filteredObjectDetails.SubtypeCount[st]);
     }
 }
