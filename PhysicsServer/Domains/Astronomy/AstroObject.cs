@@ -71,5 +71,16 @@
         public AstroObjectClassification? Classification { get; init; }
         public double RightAscension { get; init; }
         public double Declination { get; init; }
+
+
+        private bool IsGalaxy => Classification?.Type == Type.Elliptical
+                || Classification?.Type == Type.Lenticular
+                || Classification?.Type == Type.Spiral
+                || Classification?.Type == Type.Irregular;
+        private bool IsCluster => Classification?.Type == Type.Globular
+                || Classification?.Type == Type.Open;
+        private bool IsNebula => Classification?.Type == Type.SupernovaRemnant
+                || Classification?.Type == Type.Diffuse
+                || Classification?.Type == Type.PlanetaryNebula;
     }
 }

@@ -5,12 +5,51 @@
 <Layout Sider="true">
     <LayoutSider>
         <LayoutSiderContent>
-            <NavMenu />
+            <Bar @ref="sidebar" Breakpoint="Breakpoint.Desktop" NavigationBreakpoint="Breakpoint.Tablet"
+                 Mode="BarMode.VerticalInline" CollapseMode="BarCollapseMode.Hide"
+                 ThemeContrast="ThemeContrast.Dark">
+                <BarBrand>
+                    <BarItem>
+                        <BarLink To="">
+                            Physics
+                        </BarLink>
+                    </BarItem>
+                </BarBrand>
+                <BarMenu>
+                    <BarStart>
+                        <BarItem>
+                            <BarLink To="/astronomy">
+                                Astronomy
+                            </BarLink>
+                            <BarDropdown Visible="true">
+                                <BarDropdownMenu>
+                                    <BarDropdownItem To="astronomy/star-watcher">
+                                        Visible Objects
+                                    </BarDropdownItem>
+                                </BarDropdownMenu>
+                            </BarDropdown>
+                        </BarItem>
+                    </BarStart>
+                </BarMenu>
+            </Bar>
         </LayoutSiderContent>
     </LayoutSider>
     <Layout>
+        <LayoutHeader Fixed="true">
+            <Bar Mode="BarMode.Horizontal"
+                Background="Background.White"
+                ThemeContrast="ThemeContrast.Light"
+                Border="Border.Is1">
+                <BarToggler Bar="@sidebar" Border="Border.Is0"/>
+            </Bar>
+        </LayoutHeader>
         <LayoutContent Padding="Padding.Is4.OnX.Is4.OnY">
             @Body
         </LayoutContent>
     </Layout>
 </Layout>
+
+
+@code{
+    private Bar sidebar;
+}

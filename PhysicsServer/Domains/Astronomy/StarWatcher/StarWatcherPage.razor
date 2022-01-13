@@ -1,13 +1,14 @@
 ﻿@page "/astronomy/star-watcher"
 @using Asterism
 @using Humanizer;
+@using System.Collections.Immutable
 @inject IAstroObjectService AstroObjectService
 @inject IJSRuntime JSRuntime
 
 
-<h3>Astronomy / Visible Objects</h3>
+<h3>Visible Objects</h3>
 <p class="text">
-    Find objects to observe in your night sky.
+    Find objects in your night sky.
 </p>
 <Row>
     <Column ColumnSize="ColumnSize.Is12.OnMobile.Is4.OnWidescreen">
@@ -46,6 +47,9 @@
                             <label for="time-zone">Time Zone</label>
                             <input type="number" step="1" class="form-control" id="time-zone"
                                    @bind-value="@_observingOptions.TimeZone" />
+                            <Small TextColor="TextColor.Muted">
+                                From UTC
+                            </Small>
                         </Column>
                     </Row>
                     <Divider DividerType="DividerType.TextContent" Text="Viewing Range" />
@@ -112,15 +116,17 @@
                     </div>
                     -->
                 </CardText>
-                <Button Color="Color.Primary" Loading="@_findingObjects"
-                        Clicked="@HandleValidSubmit">
-                    <LoadingTemplate>
-                        Finding...
-                    </LoadingTemplate>
-                    <ChildContent>
-                        Find
-                    </ChildContent>
-                </Button>
+                <Div Flex="Flex.JustifyContent.End">
+                    <Button Color="Color.Primary" Loading="@_fetchingObjects"
+                            Clicked="@HandleValidSubmit">
+                        <LoadingTemplate>
+                            Fetching objects from database...
+                        </LoadingTemplate>
+                        <ChildContent>
+                            Apply
+                        </ChildContent>
+                    </Button>
+                </Div>
             </CardBody>
         </Card>
     </Column>
@@ -232,7 +238,7 @@
 
     private record ObjectEnumerationDetails
     {
-        public IDictionary<AstroObject.Type, int>? TypeCount { get; init; }
+        public IDictionary<AstroObject.Type, int> TypeCount { get; init; } = ImmutableDictionary<AstroObject.Type, int>.Empty;
     }
 
     private class DegreesMinutesSeconds
@@ -266,31 +272,97 @@
 
     private EditContext? _editContext;
     private ObservingOptions _observingOptions = new ObservingOptions();
-    private bool _findingObjects = false;
+    private bool _fetchingObjects = false;
     private bool _badConnection = false;
     private IEnumerable<AstroObject> _objects = Enumerable.Empty<AstroObject>();
     private IEnumerable<AstroObject> _filteredObjects = Enumerable.Empty<AstroObject>();
     private IEnumerable<AstroObjectRep> _filteredObjectReps = Enumerable.Empty<AstroObjectRep>();
-    private ObjectEnumerationDetails _filteredObjectDetails;
+    private ObjectEnumerationDetails _filteredObjectDetails = new ObjectEnumerationDetails();
+
 
     protected override async Task OnInitializedAsync()
     {
-        _filteredObjects = Enumerable.Empty<AstroObject>();
-        DateTime now = DateTime.Now;
-        // Firefox does not support seconds, so round to previous minute
+        // Initialize state
+        DateTime initialTime = DateTime.Now.Date.AddHours(System.Math.Max(20, DateTime.Now.Hour));  // Initial starting time set to today at 20:00:00
         _observingOptions = new ObservingOptions
-            {
-                StartTime = DateTime.Now.Date.AddHours(System.Math.Max(20, DateTime.Now.Hour)),
-                EndTime = DateTime.Now.Date.AddHours(System.Math.Max(22, DateTime.Now.Hour + 2)),
-                TimeZone = -5,
-                MinAzimuth = 0d,
-                MaxAzimuth = 180d,
-                MinAltitude = 0d,
-                MaxAltitude = 180d,
-                Latitude = 36.131839d,
-                Longitude = -80.278994d
-            };
+        {
+            StartTime = initialTime,
+            EndTime = initialTime.AddHours(2),  // Initial ending time set to 2 hours after starting time
+            // Viewing location set to roof of Olin Hall, Wake Forest University, EDT
+            TimeZone = -5,
+            Latitude = 36.131839d,
+            Longitude = -80.278994d,
+            // Viewing range (MinAltitude is the only piece currently in use)
+            MinAzimuth = 0d,
+            MaxAzimuth = 180d,
+            MinAltitude = 0d,
+            MaxAltitude = 180d,
+        };
         _editContext = new EditContext(_observingOptions);
+
+        // Fetch objects
+        try
+        {
+            _fetchingObjects = true;
+            _objects = await FetchObjects();
+        }
+        catch
+        {
+            _badConnection = true;
+        }
+        finally
+        {
+            _fetchingObjects = false;
+        }
+        StateHasChanged();
+    }
+
+    private async Task GetCurrentPosition()
+    {
+        // BUSTED - need to figure out jsinterop to get this to work
+        //  - See https://developer.mozilla.org/en-US/docs/Web/API/Geolocation_API
+        /*
+        <div class="col-lg-4 d-flex">
+            <div class="btn btn-secondary mt-auto"
+                    @onclick="@GetCurrentPosition">
+                Use my location
+        </div>
+        </div>
+        */
+        var res = await JSRuntime.InvokeAsync<(double latitude, double longitude)>("geolocation.getLocation");
+        StateHasChanged();
+    }
+
+    private void HandleValidSubmit()
+    {
+        _filteredObjects = GetVisibleObjects(_objects, _observingOptions);
+        _filteredObjectReps = AstroObjectRepresentations(_filteredObjects, _observingOptions.StartTime, _observingOptions.EndTime, _observingOptions.TimeZone,
+            new GeographicCoords(_observingOptions.Latitude, _observingOptions.Longitude));
+        int typeCount(AstroObject.Type t) => _filteredObjects.Where(o => o.Classification?.Type == t).Count();
+        _filteredObjectDetails = new ObjectEnumerationDetails
+            {
+                TypeCount = new Dictionary<AstroObject.Type, int>
+                {
+                    {AstroObject.Type.Elliptical, typeCount(AstroObject.Type.Elliptical)},
+                    {AstroObject.Type.Lenticular, typeCount(AstroObject.Type.Lenticular)},
+                    {AstroObject.Type.Spiral, typeCount(AstroObject.Type.Spiral)},
+                    {AstroObject.Type.Irregular, typeCount(AstroObject.Type.Irregular)},
+                    {AstroObject.Type.Globular, typeCount(AstroObject.Type.Globular)},
+                    {AstroObject.Type.Open, typeCount(AstroObject.Type.Open)},
+                    {AstroObject.Type.SupernovaRemnant, typeCount(AstroObject.Type.SupernovaRemnant)},
+                    {AstroObject.Type.Diffuse, typeCount(AstroObject.Type.Diffuse)},
+                    {AstroObject.Type.PlanetaryNebula, typeCount(AstroObject.Type.PlanetaryNebula)},
+                }
+            };
+        StateHasChanged();
+    }
+
+    private void HandleInvalidSubmit()
+    {
+    }
+
+    private async Task<IEnumerable<AstroObject>> FetchObjects()
+    {
 #if DEBUG
     AstroObject testObject = new AstroObject
     {   // Based on Orion Nebula
@@ -334,61 +406,10 @@
     RightAscension = 15d*(23d+25d/6+44.85d/60/60),
     Declination = 61d+42d/60+59.6d/60/60
     };
-    _objects = new List<AstroObject>{testObject, secondObject, thirdObject};
+    return new List<AstroObject>{testObject, secondObject, thirdObject};
 #else
-        _filteredObjects = await GetAllObjects();
+        return await AstroObjectService.GetAll();
 #endif
-        _objects = await GetAllObjects();
-        /*
-        _filteredObjects = _objects;
-        _filteredObjectReps = AstroObjectRepresentations(_filteredObjects, _observingOptions.StartTime, _observingOptions.EndTime, _observingOptions.TimeZone,
-            new GeographicCoords(Latitude: _observingOptions.Latitude, Longitude: _observingOptions.Longitude));
-        */
-        StateHasChanged();
-    }
-
-    private async Task GetCurrentPosition()
-    {
-        // BUSTED - need to figure out jsinterop to get this to work
-        //  - See https://developer.mozilla.org/en-US/docs/Web/API/Geolocation_API
-        /*
-        <div class="col-lg-4 d-flex">
-            <div class="btn btn-secondary mt-auto"
-                    @onclick="@GetCurrentPosition">
-                Use my location
-        </div>
-        </div>
-        */
-        var res = await JSRuntime.InvokeAsync<(double latitude, double longitude)>("geolocation.getLocation");
-        StateHasChanged();
-    }
-
-    private void HandleValidSubmit()
-    {
-        _filteredObjects = GetVisibleObjects(_objects, _observingOptions);
-        _filteredObjectReps = AstroObjectRepresentations(_filteredObjects, _observingOptions.StartTime, _observingOptions.EndTime, _observingOptions.TimeZone,
-            new GeographicCoords(_observingOptions.Latitude, _observingOptions.Longitude));
-        int typeCount(AstroObject.Type t) => _filteredObjects.Where(o => o.Classification?.Type == t).Count();
-        _filteredObjectDetails = new ObjectEnumerationDetails
-            {
-                TypeCount = new Dictionary<AstroObject.Type, int>
-            {
-                {AstroObject.Type.Elliptical, typeCount(AstroObject.Type.Elliptical)},
-                {AstroObject.Type.Lenticular, typeCount(AstroObject.Type.Lenticular)},
-                {AstroObject.Type.Spiral, typeCount(AstroObject.Type.Spiral)},
-                {AstroObject.Type.Irregular, typeCount(AstroObject.Type.Irregular)},
-                {AstroObject.Type.Globular, typeCount(AstroObject.Type.Globular)},
-                {AstroObject.Type.Open, typeCount(AstroObject.Type.Open)},
-                {AstroObject.Type.SupernovaRemnant, typeCount(AstroObject.Type.SupernovaRemnant)},
-                {AstroObject.Type.Diffuse, typeCount(AstroObject.Type.Diffuse)},
-                {AstroObject.Type.PlanetaryNebula, typeCount(AstroObject.Type.PlanetaryNebula)},
-            }
-            };
-        StateHasChanged();
-    }
-
-    private void HandleInvalidSubmit()
-    {
     }
 
     private IEnumerable<AstroObject> GetVisibleObjects(IEnumerable<AstroObject> set, ObservingOptions observingOptions)
@@ -424,17 +445,6 @@
         return overlap;
     }
 
-    private async Task<IEnumerable<AstroObject>> GetAllObjects()
-    {
-        try
-        {
-            return await AstroObjectService.GetAll();
-        }
-        catch
-        {
-            return Enumerable.Empty<AstroObject>();
-        }
-    }
 
     private IEnumerable<AstroObjectRep> AstroObjectRepresentations(IEnumerable<AstroObject> objs, DateTime dateTimeStart, DateTime dateTimeEnd, int timeZone, GeographicCoords geoCoords)
     {
@@ -472,24 +482,5 @@
             {AstroObject.Type.PlanetaryNebula, "Planetary Nebula" }
         };
         return map[t];
-    }
-
-    private bool IsGalaxy(AstroObject.Type t)
-    {
-        return t == AstroObject.Type.Elliptical
-            || t == AstroObject.Type.Lenticular
-            || t == AstroObject.Type.Spiral
-            || t == AstroObject.Type.Irregular;
-    }
-    private bool IsCluster(AstroObject.Type t)
-    {
-        return t == AstroObject.Type.Globular
-            || t == AstroObject.Type.Open;
-    }
-    private bool IsNebula(AstroObject.Type t)
-    {
-        return t == AstroObject.Type.SupernovaRemnant
-            || t == AstroObject.Type.Diffuse
-            || t == AstroObject.Type.PlanetaryNebula;
     }
 }
